@@ -13,16 +13,15 @@ DOCKER_PREFIX=${2:-arch64}
 # $ sudo usermod -aG docker $USER
 
 # Get user, uid and gid to input to Docker
-user=`whoami`
-uid=`id -u $user`
-gid=`id -g $user`
+user=$(whoami)
+uid=$(id -u $user)
+gid=$(id -g $user)
 
 # Get ssh and gitconfig settings to input to Docker
 mkdir -p user_files
 echo "file created, bk: /home/$user/.ssh"
 cp -a /home/$user/.ssh          user_files/
 cp -a /home/$user/.gitconfig    user_files/
-# cp -a /home/$user/.pip/pip.conf user_files/
 
 DOCKER_IMG_NAME=${DOCKER_PREFIX}-dev-img
 DOCKER_CNT_NAME=${DOCKER_PREFIX}-dev-cnt
@@ -35,10 +34,10 @@ build_args+="-f $DOCKER_FILE "
 # enable logs printed in Dockerfile
 # build_args+="--progress=plain --no-cache "
 
-build_args+="-t ${DOCKER_IMG_NAME} ."
-
 # -t the resulting image with the name xxx-docker-img
 # the current directory (.) as the context.
+build_args+="-t ${DOCKER_IMG_NAME} ."
+
 cmd="docker build $build_args"
 
 echo "Building docker image..."
@@ -46,6 +45,7 @@ echo $cmd; eval $cmd
 
 
 host_addr=$(hostname -s)
+dev_dir="/home/$user/build_rpi"
 
 # Set run arguments/inputs for Docker container
 # old -p 2222-2229:22
@@ -56,10 +56,10 @@ run_args="-it -d -p 2222:22 --privileged "
 run_args+="--hostname $host_addr "
 run_args+="--name $DOCKER_CNT_NAME "
 
-# add shared /home/build
-#if [ -d /home/build ]; then
-#  run_args+=" -v /home/build:/home/build"
-#fi
+# add shared 'dev_dir'
+if [ -d $dev_dir ]; then
+ run_args+="-v $dev_dir:$dev_dir "
+fi
 
 # Create and run container
 cmd="docker run $run_args ${DOCKER_IMG_NAME} /bin/bash"
