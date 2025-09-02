@@ -64,7 +64,6 @@ RUN useradd -u ${uid} -g ${build_grp} -M -r ${build_usr} -s /bin/bash
 RUN echo "${build_usr} ALL=NOPASSWD:ALL" >> /etc/sudoers && \
     passwd -d ${build_usr}
 
-RUN echo "chown: " ${build_usr} ":" ${build_grp}
 
 RUN mkdir -p /home/${build_usr} && \
     chown ${build_usr}:${build_grp} /home/${build_usr}
@@ -81,55 +80,57 @@ RUN sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid
 # load .bshrc file while connection on ssh
 RUN echo 'if [ -f ~/.bashrc ]; then . ~/.bashrc; fi' >> /etc/profile
 
-# Step 1: Add support for 32 bits arch
-#RUN dpkg --add-architecture i386
-# Step 2: Update package lists, Enable armcc compiler
-#RUN apt-get update
-# Step 3: Install a 32-bit library
-#RUN apt-get install -y libc6:i386
-
-
-
 # Remove logs
 RUN rm -rf /val/log/lastlog
 RUN rm -rf /val/log/faillog
 
 
+USER $build_usr
+WORKDIR /home/$build_usr
 # restore users .ssh
-COPY user_files/.ssh /home/$build_usr/.ssh
-RUN chmod 700 /home/$build_usr/.ssh && \
-    chown -R $build_usr:$build_grp /home/$build_usr/.ssh
+COPY user_files/.ssh ./.ssh
 # restore users .gitconfig
-COPY user_files/.gitconfig /home/$build_usr/
-RUN  chown $build_usr:$build_grp /home/$build_usr/.gitconfig
+COPY user_files/.gitconfig .
+# create the .bashrc file
+RUN echo export LC_ALL=en_US.UTF-8 LANGUAGE=en_US.UTF-8 LANG=en_US.UTF-8 >> ./.bashrc
+
+USER root
+# change users .ssh, .gitconfig
+RUN chown $build_usr:$build_grp -R ./.ssh
+RUN chown $build_usr:$build_grp ./.gitconfig
+
 
 # SCM (SOurce Code Management) tolls
 RUN apt-get install --fix-missing -y \
+    vim \
     git \
     git-lfs
 
 # libffi-dev - allows code written in one language (like C) to call functions written in another language:
 #   Python, Ruby, LuaJIT, and JavaScript engines (like Node.js) use libffi to interface with native libraries.
 #   Used by CPython's ctypes module to call C functions at runtime.
-# RUN python3 \
-#     python3-venv \
-#     python3-pip \
-#     libffi-dev
+RUN apt-get install -y \
+    python3 \
+    python3-venv \
+    python3-pip \
+    libffi-dev
 
-# python manager
+# python manager - change it to create venv, not systemwide
 # RUN pip3 install pyinstaller
 
+# make python3 the default python
+RUN ln -s /usr/bin/python3 /usr/local/bin/python
+
 # build tools
-# RUN apt-get install -y \
-#     make \
-#     cmake \
-#     gcc g++ build-essential \
-#     libglib2.0-0
+RUN apt-get install -y \
+    make \
+    cmake \
+    gcc g++ build-essential \
+    libglib2.0-0
 
 
 # Copy needed files to image
 COPY entrypoint.sh /usr/local/bin
-RUN echo export LC_ALL=en_US.UTF-8 LANGUAGE=en_US.UTF-8 LANG=en_US.UTF-8 >> /home/$build_usr/.bashrc
 
 # Overwrite dash
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh

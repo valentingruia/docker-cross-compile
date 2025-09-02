@@ -4,7 +4,7 @@
 set -e
 
 DOCKER_FILE=${1:-Dockerfile}
-DOCKER_PREFIX=${2:-arch64}
+DOCKER_PREFIX=${2:-aarch64}
 
 # echo "working dir: $PWD"
 # $SUDO_USER"
@@ -45,7 +45,7 @@ echo $cmd; eval $cmd
 
 
 host_addr=$(hostname -s)
-dev_dir="/home/$user/build_rpi"
+dev_dir="/home/$user/dev_rpi"
 
 # Set run arguments/inputs for Docker container
 # old -p 2222-2229:22
