@@ -12,6 +12,10 @@ Create the container
 
 `./create_dk_client.sh`
 
+parameters used to select the desired platform:
+ - MCS51 - for SDCC-4.5.00 compiler for STM8, MCS-51, DS390, HC08, S08, Z80, Z180, R800, Rabbit, SM83, eZ80 in Z80 mode
+ - ARM_CORTEX - to be added
+
 The container is build and run in  run in detach mode. To open a console into the container:
 
 `docker exec -it -u $(whoami) arch64-dev-cnt /bin/bash`

@@ -3,8 +3,19 @@
 # enables a shell option that makes the script exit immediately
 set -e
 
+# path of the dockerfile and the image/container name
 DOCKER_FILE=${1:-Dockerfile}
 DOCKER_PREFIX=${2:-aarch64}
+BUILD_ARCH=${1:-MCS51}
+
+case "$BUILD_ARCH" in
+   "MCS51")
+    arch_script="install_mcs51.sh"
+   ;;
+   "ARM_CORTEX")
+    arch_script="install_cortex.sh"
+   ;;
+esac
 
 # echo "working dir: $PWD"
 # $SUDO_USER"
@@ -29,6 +40,7 @@ DOCKER_CNT_NAME=${DOCKER_PREFIX}-dev-cnt
 # arguments for the the 'docker build' command
 build_args="--build-arg build_usr=$user --build-arg uid=$uid "
 build_args+="--build-arg build_grp=$user --build-arg gid=$gid "
+build_args+="--build-arg build_arch=$arch_script "
 build_args+="-f $DOCKER_FILE "
 
 # enable logs printed in Dockerfile

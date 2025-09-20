@@ -18,6 +18,8 @@ ARG build_grp="bld_grp"
 ARG uid=1001
 ARG gid=1001
 
+ARG build_arch
+
 # Enable apt proxy and install basic tools
 #RUN echo "Acquire::http::proxy \"${proxy_http}\";" > /etc/apt/apt.conf &&\
 #    echo "Acquire::https::proxy \"${proxy_https}\";" >> /etc/apt/apt.conf
@@ -115,9 +117,6 @@ RUN apt-get install -y \
     python3-pip \
     libffi-dev
 
-# python manager - change it to create venv, not systemwide
-# RUN pip3 install pyinstaller
-
 # make python3 the default python
 RUN ln -s /usr/bin/python3 /usr/local/bin/python
 
@@ -127,6 +126,12 @@ RUN apt-get install -y \
     cmake \
     gcc g++ build-essential \
     libglib2.0-0
+
+
+# include the platform specific tools
+COPY ${build_arch} /usr/local/bin/${build_arch}
+RUN chmod +x /usr/local/bin/${build_arch}
+RUN ./${build_arch}
 
 
 # Copy needed files to image
