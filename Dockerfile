@@ -1,5 +1,5 @@
 FROM ubuntu:24.04
-RUN userdel -r ubuntu
+#RUN userdel -r ubuntu
 # && gpasswd -d ubuntu ubuntu
 # RUN groupdel -r ubuntu
 
@@ -9,38 +9,36 @@ RUN userdel -r ubuntu
 #RUN echo "Usr:" ${uid} "group" ${gid}
 #RUN echo "Existing groups:" && getent group && exit 1
 
-
-
 LABEL Author="Valentin Gruia"
 
+# arguments default value
 ARG build_usr="bld_usr"
 ARG build_grp="bld_grp"
-ARG uid=1001
-ARG gid=1001
+ARG uid=1000
+ARG gid=1000
 
-ARG build_arch
 
 # Enable apt proxy and install basic tools
 #RUN echo "Acquire::http::proxy \"${proxy_http}\";" > /etc/apt/apt.conf &&\
 #    echo "Acquire::https::proxy \"${proxy_https}\";" >> /etc/apt/apt.conf
-# RUN apt-get update && apt-get install -y apt-utils vim  sudo
+RUN apt-get update && apt-get install -y \
+    apt-utils \
+    sudo
 
 # adapt sources.list
 # RUN echo "deb http://aptly.conti.de xenial main" >> /etc/apt/sources.list
 RUN apt-get update
-
-
-RUN apt-get install -y \
-    coreutils\
+RUN apt-get install -y --no-install-recommends \
+    ca-certificates \
+    coreutils \
     gosu \
     curl \
     wget \
     unzip
-# RUN curl -s ${repo_source} > /usr/local/bin/repo && chmod a+x /usr/local/bin/repo
 
 
 # Additional environment modifications (locales/language configure and sh causes some syntax errors in some build scripts)
-# Having proper locales configured and installed, will mitigate Compiler Warnings from opensource/systemd packages
+# Having proper locales configured and installed will mitigate Compiler Warnings from opensource/systemd packages
 RUN apt-get install -y locales && \
     locale-gen en_US.UTF-8 && \
     update-locale LANG=en_US.UTF-8
@@ -51,65 +49,75 @@ ENV DEBIAN_FRONTEND=noninteractiv\
     LC_ALL=en_US.UTF-8
 
 
-# ssh server
-RUN apt-get install -y openssh-server && \
-    mkdir /var/run/sshd
-
 #updates the root password to 'root'
 RUN echo "root:root" | chpasswd
 
-# Add the same user/group in the docker
-RUN groupadd -g ${gid} ${build_grp}
-# RUN useradd -lms /bin/bash -u ${uid} -g ${build_grp} ${build_usr}
-RUN useradd -u ${uid} -g ${build_grp} -M -r ${build_usr} -s /bin/bash
-# Add sudo rights to user
-RUN echo "${build_usr} ALL=NOPASSWD:ALL" >> /etc/sudoers && \
+# replace ubuntu:ubuntu with ${build_usr}:${build_grp}
+RUN set -eux; \
+    test -n "$build_usr"; \
+    test -n "$build_grp"; \
+    groupmod --new-name "${build_grp}" ubuntu; \
+    usermod --login "${build_usr}" \
+            --home "/home/${build_usr}" \
+            --move-home ubuntu; \
     passwd -d ${build_usr}
+    # Configure passwordless sudo
+RUN rm -f /etc/sudoers.d/ubuntu; \
+    mkdir -p /etc/sudoers.d/; \
+    echo "${build_usr} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${build_usr}"; \
+    chmod 0440 "/etc/sudoers.d/${build_usr}"; \
+    visudo -cf "/etc/sudoers.d/${build_usr}"
 
 
-RUN mkdir -p /home/${build_usr} && \
-    chown ${build_usr}:${build_grp} /home/${build_usr}
+# DEBUG: list user with login shell
+# RUN grep -vE '(nologin|false)$' /etc/passwd
 
-# Configure SSH for passwordless login
-# RUN echo "PermitRootLogin yes" >> /etc/ssh/sshd_config && \
-RUN echo "PermitEmptyPasswords yes" >> /etc/ssh/sshd_config && \
-    echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config && \
-    echo "PubkeyAuthentication no" >> /etc/ssh/sshd_config && \
-    echo "ChallengeResponseAuthentication no" >> /etc/ssh/sshd_config && \
-    echo "AuthenticationMethods none" >> /etc/ssh/sshd_config
-RUN sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd
 
 # load .bshrc file while connection on ssh
 RUN echo 'if [ -f ~/.bashrc ]; then . ~/.bashrc; fi' >> /etc/profile
+
+# install ssh server
+RUN apt-get install -y openssh-server && \
+    mkdir /var/run/sshd
+# configure ssh server to accept empty password
+RUN sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config \
+    && sed -i 's/^#\?PermitEmptyPasswords.*/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
 
 # Remove logs
 RUN rm -rf /val/log/lastlog
 RUN rm -rf /val/log/faillog
 
 
-USER $build_usr
-WORKDIR /home/$build_usr
+USER ${build_usr}
+WORKDIR /home/${build_usr}
 # restore users .ssh
-COPY user_files/.ssh ./.ssh
+# COPY user_files/.ssh ./.ssh
 # restore users .gitconfig
 COPY user_files/.gitconfig .
+# copy platform specific tooling
+COPY user_files/arch_specific.sh ./arch_specific.sh
 # create the .bashrc file
 RUN echo export LC_ALL=en_US.UTF-8 LANGUAGE=en_US.UTF-8 LANG=en_US.UTF-8 >> ./.bashrc
 
+# switch back to root
 USER root
 # change users .ssh, .gitconfig
-RUN chown $build_usr:$build_grp -R ./.ssh
+#RUN chown $build_usr:$build_grp -R ./.ssh
 RUN chown $build_usr:$build_grp ./.gitconfig
 
+# install platform specific tools
+RUN chown $build_usr:$build_grp ./arch_specific.sh
+RUN chmod +x ./arch_specific.sh && ./arch_specific.sh
 
-# SCM (SOurce Code Management) tolls
+# SCM (Source Code Management) tolls
 RUN apt-get install --fix-missing -y \
     vim \
+    nano \
     git \
     git-lfs
 
 # libffi-dev - allows code written in one language (like C) to call functions written in another language:
-#   Python, Ruby, LuaJIT, and JavaScript engines (like Node.js) use libffi to interface with native libraries.
+#   Python use libffi to interface with native libraries.
 #   Used by CPython's ctypes module to call C functions at runtime.
 RUN apt-get install -y \
     python3 \
@@ -122,16 +130,10 @@ RUN ln -s /usr/bin/python3 /usr/local/bin/python
 
 # build tools
 RUN apt-get install -y \
-    make \
-    cmake \
+    make  cmake \
+    meson ninja-build \
     gcc g++ build-essential \
     libglib2.0-0
-
-
-# include the platform specific tools
-COPY ${build_arch} /usr/local/bin/${build_arch}
-RUN chmod +x /usr/local/bin/${build_arch}
-RUN ./${build_arch}
 
 
 # Copy needed files to image
@@ -143,4 +145,5 @@ RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 # Entrypoint
 EXPOSE 22
 ENTRYPOINT ["entrypoint.sh"]
-CMD ["/bin/bash"]
+# CMD ["/bin/bash"]
+CMD ["/usr/sbin/sshd", "-D"]
