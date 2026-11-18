@@ -104,6 +104,9 @@ echo "ssh -p ${ssh_port} ${user}@localhost"
 echo
 echo "In case of configured .ssh/config"
 echo "ssh ${BUILD_ARCH}"
+echo
+echo "To configure vscode DevContainer"
+echo "build_vscode_cfg.sh ${DOCKER_CNT_NAME} ${user}"
 
 # clear old key from known_hosts
 ssh-keygen -f '/home/valentin/.ssh/known_hosts' -R '[localhost]:${ssh_port}'
