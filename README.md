@@ -50,6 +50,15 @@ The [config file is described here](vscode_cfg.md).
 
 # Usefull commands
 
+Some frequent commands are saved in *docker_utils.sh*
+``` bash
+source docker_utils.sh
+
+# function used to erase the *container* with name dev-cortex-MacroKbd and the coresponding *image*
+clean_container dev-cortex-MacroKbd
+```
+
+
 |command|description|
 |:----------|:----------------------|
 |`docker logs dev-arch64-111617`|Print logs from container|

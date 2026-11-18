@@ -73,9 +73,8 @@ work_dir="/work"
 #   -p 2222-2229:22
 #   -d - run in detach mode, in background
 #   -P - Publish all exposed ports from the container to random host ports.
-run_args="-it -d -p 2222:22 --privileged "
+run_args="-it -d -p 2222-2229:22 --privileged "
 # run_args+="--network host "
-# run_args+="--hostname $(hostname -s) "
 run_args+="--hostname $BUILD_ARCH "
 run_args+="--name $DOCKER_CNT_NAME "
 
@@ -108,7 +107,10 @@ echo
 echo "To configure vscode DevContainer"
 echo "build_vscode_cfg.sh ${DOCKER_CNT_NAME} ${user}"
 
-# clear old key from known_hosts
-ssh-keygen -f '/home/valentin/.ssh/known_hosts' -R '[localhost]:${ssh_port}'
+# remove the old record from known_hosts list
+echo
+echo "Remove record from known_host file"
+ssh-keygen -f "${HOME}/.ssh/known_hosts" -R "[localhost]:${ssh_port}"
 
+# cleanup
 rm -rf user_files
