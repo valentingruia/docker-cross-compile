@@ -17,6 +17,7 @@ Create the container
 [TARGET] desired platform, is optional:
  - mcs51 - for SDCC-4.5.00 compiler for STM8, MCS-51, DS390, HC08, S08, Z80, Z180, R800, Rabbit, SM83, eZ80 in Z80 mode
  - cortex - ARM cortex targets - DEFAULT value
+ - empty - the toolchain is not installed at docker build time
  - aarch64 - to add support
 
 ## The container is build and run in detach mode. To open a console into the container:

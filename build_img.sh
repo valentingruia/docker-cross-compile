@@ -21,6 +21,9 @@ case "$BUILD_ARCH" in
    "cortex")
     arch_tools="install_cortex.sh"
    ;;
+   "empty")
+    arch_tools="install_empty.sh"
+   ;;
 esac
 
 # echo "working dir: $PWD"
